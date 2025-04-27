@@ -51,7 +51,7 @@ class ParquetFileManager:
     """
 
     def __init__(self,
-                 output_dir: str = "./parquets",
+                 output_dir: str = "./parquet",
                  max_records_per_file: int = 100000,
                  max_file_size_mb: int = 1024,  # 1GB
                  max_files: int = 8,
@@ -314,7 +314,7 @@ class ParquetFileManager:
 
         raise ValueError(f"无法识别的数据格式: {type(data)}")
 
-    def write_data(self, data: Any, id_column: str = 'id') -> bool:
+    def write_data(self, data: Any, id_column: str = 'file_id') -> bool:
         """
         将数据写入Parquet文件 - 线程安全版本
 
@@ -440,7 +440,7 @@ class ParquetFileManager:
             self.logger.error(f"处理数据失败: {e}")
             return False
 
-    def write_columns_data(self, columns_data: Dict[str, List], id_column: str = 'id') -> bool:
+    def write_columns_data(self, columns_data: Dict[str, List], id_column: str = 'file_id') -> bool:
         """
         将列数据格式写入Parquet文件
 
@@ -453,7 +453,7 @@ class ParquetFileManager:
         """
         return self.write_data(columns_data, id_column)
 
-    def get_full_files(self) -> List[ParquetFileInfo]:
+    def get_full_files(self, is_finally: bool = False) -> List[ParquetFileInfo]:
         """
         获取所有已写满的文件信息
 
@@ -461,9 +461,11 @@ class ParquetFileManager:
             已写满文件的信息列表
         """
         with self.lock:
+            if is_finally:
+                return [info for info in self.file_info_table.values()]
             return [info for info in self.file_info_table.values() if info.is_full]
 
-    def process_full_files(self) -> List[ParquetFileInfo]:
+    def process_full_files(self, is_finally: bool = False) -> List[ParquetFileInfo]:
         """
         处理已写满的文件：记录日志并从表中移除
 
@@ -471,7 +473,7 @@ class ParquetFileManager:
             处理的文件信息列表
         """
         with self.lock:
-            full_files = self.get_full_files()
+            full_files = self.get_full_files(is_finally)
             if not full_files:
                 self.logger.info("没有写满的文件需要处理")
                 return []
