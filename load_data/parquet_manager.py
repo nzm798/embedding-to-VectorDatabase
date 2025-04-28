@@ -11,16 +11,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from datetime import datetime
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("./logs/parquet_manager.log"),
-        logging.StreamHandler()
-    ]
-)
-
 
 @dataclass
 class ParquetFileInfo:
@@ -51,7 +41,7 @@ class ParquetFileManager:
     """
 
     def __init__(self,
-                 output_dir: str = "./parquet",
+                 output_dir: str = "parquet",
                  max_records_per_file: int = 100000,
                  max_file_size_mb: int = 1024,  # 1GB
                  max_files: int = 8,
@@ -73,6 +63,17 @@ class ParquetFileManager:
         os.makedirs(output_dir, exist_ok=True)
         # 创建日志目录(如果不存在)
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        os.makedirs(os.path.dirname("./logs/parquet_manager.log"), exist_ok=True)
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler("./logs/parquet_manager.log", encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        self.logger = logging.getLogger('ParquetFileManager')
 
         self.output_dir = output_dir
         self.max_records_per_file = max_records_per_file
@@ -107,7 +108,6 @@ class ParquetFileManager:
         self.operation_logger.addHandler(file_handler)
         self.operation_logger.setLevel(logging.INFO)
 
-        self.logger = logging.getLogger('ParquetFileManager')
         self.logger.info(
             f"初始化ParquetFileManager，输出目录: {output_dir}, 最大记录数: {max_records_per_file}, 最大文件大小: {max_file_size_mb}MB")
 
@@ -116,7 +116,7 @@ class ParquetFileManager:
         with self.lock:
             if os.path.exists(self.metadata_file):
                 try:
-                    with open(self.metadata_file, 'r') as f:
+                    with open(self.metadata_file, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
 
                     for file_info_dict in metadata:
@@ -143,6 +143,7 @@ class ParquetFileManager:
 
     def _save_metadata(self):
         """保存文件信息表到元数据文件"""
+        import builtins
         with self.lock:
             try:
                 # 创建一个没有data_buffer字段的副本
@@ -153,7 +154,7 @@ class ParquetFileManager:
                         del info_dict['data_buffer']
                     metadata_to_save.append(info_dict)
 
-                with open(self.metadata_file, 'w') as f:
+                with builtins.open(self.metadata_file, 'w', encoding='utf-8') as f:
                     json.dump(metadata_to_save, f, indent=2)
                 self.logger.debug("元数据已保存")
             except Exception as e:
@@ -462,14 +463,16 @@ class ParquetFileManager:
         Returns:
             已写满文件的信息列表
         """
-        infos=[]
         with self.lock:
+            infos = []
             if is_finally:
                 infos = [info for info in self.file_info_table.values()]
-            infos = [info for info in self.file_info_table.values() if info.is_full]
+            else:
+                infos = [info for info in self.file_info_table.values() if info.is_full]
             if len(infos) > self.max_return_files:
                 infos = infos[:self.max_return_files]
             return infos
+
     def process_full_files(self, is_finally: bool = False) -> List[ParquetFileInfo]:
         """
         处理已写满的文件：记录日志并从表中移除

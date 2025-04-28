@@ -3,6 +3,7 @@ minio==7.2.15
 pandas==2.2.3
 polars==1.27.1
 pyarrow==20.0.0
-pymilvus==2.5.7
+pymilvus[bulk_writer]==2.4.4
 pymysql==1.1.1
 Requests==2.32.3
+marshmallow==3.20.1

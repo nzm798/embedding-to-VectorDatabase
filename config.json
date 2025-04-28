@@ -21,7 +21,7 @@
     "minio_access_key": "minioadmin",
     "minio_secret_key": "minioadmin",
     "minio_bucket": "news-bucket",
-    "remote_data_path": "./"
+    "remote_data_path": "parquet"
   },
   "BatchReader": {
     "file_path": "",
@@ -30,7 +30,7 @@
     "batch_size": 1000
   },
   "ParquetFile": {
-    "output_dir": "./parquet",
+    "output_dir": "parquet",
     "max_records_per_file": 100000,
     "max_file_size_mb": 1024,
     "max_files": 8,

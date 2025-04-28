@@ -1,9 +1,11 @@
-from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility, BulkInsertState
+from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility, BulkInsertState,MilvusClient
 from minio import Minio
 from minio.error import S3Error
 from typing import List, Optional
 import os
 import time
+
+from load_data.parquet_manager_v2 import MilvusBulkWriterManager
 
 
 class MilvusClient:
@@ -11,7 +13,7 @@ class MilvusClient:
                  collection_name: str = "telecom_dag_index_news", dim: int = 768,
                  minio_host: str = "127.0.0.1", minio_port: int = 9000, minio_access_key: str = "minioadmin",
                  minio_secret_key: str = "minioadmin",
-                 minio_bucket: str = "news-bucket", remote_data_path: str = "./"
+                 minio_bucket: str = "news-bucket", remote_data_path: str = "parquet"
                  ):
         """
         初始化Milvus连接
@@ -116,7 +118,7 @@ class MilvusClient:
         # 1. 上传Parquet文件到 MinIO
         try:
             file_name = os.path.basename(parquet_file_path)
-            remote_file_path = os.path.join(self.remote_data_path, "parquet", file_name)
+            remote_file_path = os.path.join(self.remote_data_path, file_name).replace("\\", "/")
             self.minio_client.fput_object(self.minio_bucket, remote_file_path, parquet_file_path)
             print(f"[INFO] Uploaded file '{file_name}' to MinIO at '{remote_file_path}'")
         except S3Error as e:
@@ -129,7 +131,7 @@ class MilvusClient:
                 collection_name=self.collection_name,
                 files=[remote_file_path]
             )
-            print(f"[INFO] Started BulkInsert, task_id: {task_id}")
+
         except Exception as e:
             print(f"[ERROR] Failed to start BulkInsert: {e}")
             return False
@@ -196,50 +198,70 @@ if __name__ == '__main__':
 
     client = MilvusClient(
         host="192.168.0.110",
-        port="19530",
+        port=19530,
         database="Knowledge1024Hybrid",
         minio_host="192.168.0.110",
-        minio_port="9000",
+        minio_port=9000,
         minio_access_key="minioadmin",
         minio_secret_key="minioadmin",
-        minio_bucket="news-bucket",
-        remote_data_path="./"
+        minio_bucket="a-bucket",
     )
 
     # 2. 测试连接
     assert client.ping(), "[FAIL] Cannot connect to Milvus!"
+    from pymilvus import MilvusClient,DataType
+    schema =MilvusClient.create_schema(
+        auto_id=False,
+        enable_dynamic_field=True
+    )
+    schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True, auto_id=True)
+    schema.add_field(field_name="qa_id", datatype=DataType.INT64, is_primary=False, auto_id=False)
+    schema.add_field(field_name="question", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="answer", datatype=DataType.VARCHAR, max_length=20000)
+    schema.add_field(field_name="file_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="block_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="dense_embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="sparse_embedding", datatype=DataType.SPARSE_FLOAT_VECTOR)
+    schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="flag", datatype=DataType.VARCHAR, max_length=100)
+    schema.verify()
 
     # 3. 插入数据
-    n = 5
+    n = 100
 
     # dense_vectors：每个向量1024维
     dense_vectors = [[random.random() for _ in range(1024)] for _ in range(n)]
 
-    sparse_vectors = []
-    for _ in range(n):
-        num_nonzero = random.randint(3, 10)  # 每个稀疏向量3~10个非零值
-        indices = random.sample(range(1024), num_nonzero)  # 随机选索引
-        indices.sort()  # 按索引排序（某些版本的Milvus可能要求索引有序）
-        values = [random.random() for _ in range(num_nonzero)]  # 随机生成权重
-
-        # 使用正确的稀疏向量格式: {indices: [...], values: [...]}
-        sparse_vectors.append({"indices": indices, "values": values})
-
-    # 准备要插入的数据
-    data = [
-        [0] * n,  # qa_id
-        [""] * n,  # question
-        [""] * n,  # answer
-        [i for i in range(n)],  # file_id
-        [i for i in range(n)],  # block_id
-        [f"file_{i}.txt" for i in range(n)],  # file_name
-        [f"content of file {i}" for i in range(n)],  # content
-        dense_vectors,  # dense_embedding
-        sparse_vectors,  # sparse_embedding
-        [""] * n,  # source
-        ["0"] * n  # flag
+    sparse_vectors = [
+        {
+            364: 0.17531773447990417,
+            418: 0.145879546621,
+            630: 0.1101302548795,
+            3172: 0.268978546412,
+            5357: 0.254789645874,
+            15483: 0.215479896454225454
+        } for _ in range(n)
     ]
 
-    # 插入
-    client.insert(data)
+    # 准备要插入的数据
+    data = {
+        "qa_id": [0] * n,  # qa_id
+        "question": [""] * n,  # question
+        "answer": [""] * n,  # answer
+        "file_id": [i for i in range(n)],  # file_id
+        "block_id": [i for i in range(n)],  # block_id
+        "file_name": [f"file_{i}.txt" for i in range(n)],  # file_name
+        "content": [f"content of file {i}" for i in range(n)],  # content
+        "dense_embedding": dense_vectors,  # dense_embedding
+        "sparse_embedding": sparse_vectors,  # sparse_embedding
+        "source": [""] * n,  # source
+        "flag": ["0"] * n  # flag
+    }
+
+    parquet = MilvusBulkWriterManager(schema=schema)
+    parquet.write_columns_data(columns_data=data)
+    file = parquet.process_full_files(include_active=True)
+    client.bulk_insert(file[0].file_path)
     print("[PASS] Inserted test data.")

@@ -81,8 +81,4 @@ if __name__ == "__main__":
         print(f"Batch {batch_idx}:")
         print(batch)
 
-        for i in range(batch.shape[0]):
-            expected_file_name = f"{clean_title(batch['title'][i])}_{reader.global_idx - batch.shape[0] + i + 1}.txt"
-            actual_file_name = batch['file_name'][i]
-
         batch_idx += 1
