@@ -1,7 +1,7 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class TextSplitter:
-    def __init__(self, chunk_size: int = 3000, overlap: int = 0):
+    def __init__(self, chunk_size: int = 3200, overlap: int = 100):
         """
         初始化文本分块器
         :param chunk_size: 每个分块的最大长度

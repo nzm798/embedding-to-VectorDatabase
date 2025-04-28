@@ -7,9 +7,9 @@ import time
 
 
 class MilvusClient:
-    def __init__(self, host: str = "127.0.0.1", port: str = "19530", database: str = "Knowledge1024Hybrid",
+    def __init__(self, host: str = "127.0.0.1", port: int = 19530, database: str = "Knowledge1024Hybrid",
                  collection_name: str = "telecom_dag_index_news", dim: int = 768,
-                 minio_host: str = "127.0.0.1", minio_port: str = "9000", minio_access_key: str = "minioadmin",
+                 minio_host: str = "127.0.0.1", minio_port: int = 9000, minio_access_key: str = "minioadmin",
                  minio_secret_key: str = "minioadmin",
                  minio_bucket: str = "news-bucket", remote_data_path: str = "./"
                  ):

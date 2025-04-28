@@ -55,6 +55,7 @@ class ParquetFileManager:
                  max_records_per_file: int = 100000,
                  max_file_size_mb: int = 1024,  # 1GB
                  max_files: int = 8,
+                 max_return_files: int = 4,
                  log_file: str = "./logs/parquet_operations.log",
                  metadata_file: str = "./logs/parquet_metadata.json"):
         """
@@ -79,6 +80,7 @@ class ParquetFileManager:
         self.max_files = max_files
         self.log_file = log_file
         self.metadata_file = metadata_file
+        self.max_return_files = max_return_files
 
         # 用于线程安全操作的锁
         self.lock = threading.RLock()  # 使用可重入锁
@@ -460,11 +462,14 @@ class ParquetFileManager:
         Returns:
             已写满文件的信息列表
         """
+        infos=[]
         with self.lock:
             if is_finally:
-                return [info for info in self.file_info_table.values()]
-            return [info for info in self.file_info_table.values() if info.is_full]
-
+                infos = [info for info in self.file_info_table.values()]
+            infos = [info for info in self.file_info_table.values() if info.is_full]
+            if len(infos) > self.max_return_files:
+                infos = infos[:self.max_return_files]
+            return infos
     def process_full_files(self, is_finally: bool = False) -> List[ParquetFileInfo]:
         """
         处理已写满的文件：记录日志并从表中移除
