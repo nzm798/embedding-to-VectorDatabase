@@ -38,6 +38,16 @@
     "log_file": "./logs/parquet_operations.log",
     "metadata_file": "./logs/parquet_metadata.json"
   },
+  "MilvusBulkWriter": {
+    "schema": null,
+    "output_dir": "parquet",
+    "max_records_per_file": 100000,
+    "max_file_size_mb": 512,
+    "max_files": 8,
+    "max_return_files": 4,
+    "log_file": "./logs/parquet_operations.log",
+    "metadata_file": "./logs/parquet_metadata.json"
+  },
   "Splitter": {
     "chunk_size": 3200,
     "overlap": 100

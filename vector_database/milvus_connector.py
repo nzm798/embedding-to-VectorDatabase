@@ -1,19 +1,18 @@
-from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility, BulkInsertState,MilvusClient
+from pymilvus import connections, Collection, CollectionSchema, FieldSchema, DataType, utility, BulkInsertState, \
+    MilvusClient
 from minio import Minio
 from minio.error import S3Error
 from typing import List, Optional
 import os
 import time
 
-from load_data.parquet_manager_v2 import MilvusBulkWriterManager
 
-
-class MilvusClient:
+class MyMilvusClient:
     def __init__(self, host: str = "127.0.0.1", port: int = 19530, database: str = "Knowledge1024Hybrid",
                  collection_name: str = "telecom_dag_index_news", dim: int = 768,
                  minio_host: str = "127.0.0.1", minio_port: int = 9000, minio_access_key: str = "minioadmin",
                  minio_secret_key: str = "minioadmin",
-                 minio_bucket: str = "news-bucket", remote_data_path: str = "parquet"
+                 minio_bucket: str = "a-bucket", remote_data_path: str = "parquet"
                  ):
         """
         初始化Milvus连接
@@ -109,18 +108,23 @@ class MilvusClient:
         self.collection.flush()
         print(f"[INFO] Inserted {len(data[0])} embedding.")
 
-    def bulk_insert(self, parquet_file_path: str) -> bool:
+    def bulk_insert(self, path_name, parquet_file_path: List[List[str]]) -> bool:
         """
         上传Parquet文件到MinIO并触发Milvus的Bulk Insert
         :param parquet_file_path: 本地Parquet文件路径
+        :param path_name: 该批次数据的文件名
         :return: 是否成功
         """
-        # 1. 上传Parquet文件到 MinIO
+        # 1. 上传所有Parquet文件到 MinIO
+        remote_file_paths = []  # 存储上传到 MinIO 的文件路径
         try:
-            file_name = os.path.basename(parquet_file_path)
-            remote_file_path = os.path.join(self.remote_data_path, file_name).replace("\\", "/")
-            self.minio_client.fput_object(self.minio_bucket, remote_file_path, parquet_file_path)
-            print(f"[INFO] Uploaded file '{file_name}' to MinIO at '{remote_file_path}'")
+            for path in parquet_file_path:  # 遍历嵌套列表中的每一个子列表
+                file_name = os.path.basename(path[0])
+                remote_file_path = os.path.join(self.remote_data_path, path_name, file_name).replace("\\", "/")
+                # 上传文件到 MinIO
+                self.minio_client.fput_object(self.minio_bucket, remote_file_path, path[0])
+                remote_file_paths.append(remote_file_path)  # 记录已上传的文件路径
+                print(f"[INFO] Uploaded file '{file_name}' to MinIO at '{remote_file_path}'")
         except S3Error as e:
             print(f"[ERROR] Failed to upload file to MinIO: {e}")
             return False
@@ -129,8 +133,14 @@ class MilvusClient:
         try:
             task_id = utility.do_bulk_insert(
                 collection_name=self.collection_name,
-                files=[remote_file_path]
+                files=remote_file_paths
             )
+            print(f"***********************"
+                  f"[INFO] Bulk insert task ID: {task_id} \n"
+                  f"This task uploads files:\n"
+                  f"{remote_file_paths}"
+                  f"***********************"
+                  )
 
         except Exception as e:
             print(f"[ERROR] Failed to start BulkInsert: {e}")
@@ -196,22 +206,24 @@ class MilvusClient:
 if __name__ == '__main__':
     import random
 
-    client = MilvusClient(
-        host="192.168.0.110",
-        port=19530,
-        database="Knowledge1024Hybrid",
-        minio_host="192.168.0.110",
-        minio_port=9000,
-        minio_access_key="minioadmin",
-        minio_secret_key="minioadmin",
-        minio_bucket="a-bucket",
-    )
+    # client = MyMilvusClient(
+    #     host="192.168.0.110",
+    #     port=19530,
+    #     database="Knowledge1024Hybrid",
+    #     minio_host="192.168.0.110",
+    #     minio_port=9000,
+    #     minio_access_key="minioadmin",
+    #     minio_secret_key="minioadmin",
+    #     minio_bucket="a-bucket",
+    # )
 
     # 2. 测试连接
-    assert client.ping(), "[FAIL] Cannot connect to Milvus!"
-    from pymilvus import MilvusClient,DataType
-    schema =MilvusClient.create_schema(
-        auto_id=False,
+    # assert client.ping(), "[FAIL] Cannot connect to Milvus!"
+    from pymilvus import MilvusClient, DataType
+    from load_data.milvus_bulk_writer import MilvusBulkWriterManager
+
+    schema = MilvusClient.create_schema(
+        auto_id=True,
         enable_dynamic_field=True
     )
     schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True, auto_id=True)
@@ -263,5 +275,5 @@ if __name__ == '__main__':
     parquet = MilvusBulkWriterManager(schema=schema)
     parquet.write_columns_data(columns_data=data)
     file = parquet.process_full_files(include_active=True)
-    client.bulk_insert(file[0].file_path)
-    print("[PASS] Inserted test data.")
+    print(file[0].batch_file)
+    # client.bulk_insert(file[0].file_path)

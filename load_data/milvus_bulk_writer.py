@@ -19,10 +19,10 @@ class BulkFileInfo:
     """Stores information about a bulk file"""
     file_name: str
     file_path: str
+    batch_file: List = None
     record_count: int = 0
     min_id: int = None
     max_id: int = None
-    file_size_bytes: int = 0
     is_full: bool = False
     created_at: str = None
     last_updated_at: str = None
@@ -294,7 +294,7 @@ class MilvusBulkWriterManager:
 
         raise ValueError(f"Unrecognized data format: {type(data)}")
 
-    def write_data(self, data: Any, id_column: str = 'id') -> bool:
+    def write_data(self, data: Any, id_column: str = 'file_id') -> bool:
         """
         Write data to bulk file - thread-safe
 
@@ -332,6 +332,14 @@ class MilvusBulkWriterManager:
                     # Commit if we've reached a batch size
                     if file_info.record_count + record_count >= self.max_records_per_file:
                         writer.commit()
+                        file_info.batch_file = writer.batch_files
+                        file_size = 0
+                        if os.path.exists(file_info.file_path):
+                            # Calculate size based on all files in the directory
+                            for root, _, files in os.walk(file_info.file_path):
+                                for f in files:
+                                    file_size += os.path.getsize(os.path.join(root, f))
+                        file_info.file_size = file_size
 
                     # Update file statistics
                     current_time = datetime.now().isoformat()
@@ -345,22 +353,14 @@ class MilvusBulkWriterManager:
 
                     # Check if file is full after this write
                     is_full = False
-                    file_size = 0
-                    if os.path.exists(file_info.file_path):
-                        # Calculate size based on all files in the directory
-                        for root, _, files in os.walk(file_info.file_path):
-                            for f in files:
-                                file_size += os.path.getsize(os.path.join(root, f))
 
-                    if ((file_info.record_count + record_count) >= self.max_records_per_file or
-                            file_size >= self.segment_size_bytes):
+                    if (file_info.record_count + record_count) >= self.max_records_per_file:
                         is_full = True
 
                     # Update metadata with global lock
                     with self.lock:
                         # Update file info
                         file_info.record_count += record_count
-                        file_info.file_size_bytes = file_size
                         file_info.last_updated_at = current_time
 
                         # Update ID range
@@ -377,6 +377,8 @@ class MilvusBulkWriterManager:
 
                             # Close writer with final commit
                             writer.commit()
+                            # save finally file path
+                            file_info.batch_file = writer.batch_files
 
                             # If this is current writer, reset
                             if self.current_file and self.current_file.file_name == file_info.file_name:
@@ -407,7 +409,7 @@ class MilvusBulkWriterManager:
             self.logger.error(f"Failed to process data: {e}")
             return False
 
-    def write_columns_data(self, columns_data: Dict[str, List], id_column: str = 'id') -> bool:
+    def write_columns_data(self, columns_data: Dict[str, List], id_column: str = 'file_id') -> bool:
         """
         Write column-formatted data to bulk file
 
@@ -464,14 +466,25 @@ class MilvusBulkWriterManager:
                 if file_info.file_name in self.file_writers:
                     try:
                         self.file_writers[file_info.file_name].commit()
+                        file_info.batch_file = self.file_writers[file_info.file_name].batch_files
                     except Exception as e:
                         self.logger.error(f"Error committing writer: {e}")
 
                 log_message = (
-                    f"FILE_PROCESSED|{file_info.file_name}|{file_info.file_path}|"
-                    f"{file_info.record_count}|{file_info.min_id}|{file_info.max_id}|"
-                    f"{file_info.file_size_bytes}|{file_info.created_at}|{file_info.last_updated_at}"
+                    f"\n*****************\n"
+                    f"FILE PROCESSED\n"
+                    f"*****************\n"
+                    f"File Name      : {file_info.file_name}\n"
+                    f"File Path      : {file_info.file_path}\n"
+                    f"Record Count   : {file_info.record_count}\n"
+                    f"Min ID         : {file_info.min_id}\n"
+                    f"Max ID         : {file_info.max_id}\n"
+                    f"Created At     : {file_info.created_at}\n"
+                    f"Last Updated   : {file_info.last_updated_at}\n"
+                    f"batch_file : {file_info.batch_file}\n"
+                    f"*****************"
                 )
+
                 self.operation_logger.info(log_message)
 
                 # Remove from tracking

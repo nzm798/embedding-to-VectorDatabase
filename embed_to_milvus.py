@@ -5,7 +5,7 @@ from load_data.json_batch_reader import JsonlBatchReader
 from load_data.parquet_manager import ParquetFileManager
 from embedding_model.tei_req import TeiEmbeddingClient
 from splite_text.lang_chain_splitter import TextSplitter
-from vector_database.milvus_connector import MilvusClient
+from vector_database.milvus_connector import MyMilvusClient
 from vector_database.mysql_connector import MySQLClient
 
 
@@ -15,7 +15,7 @@ class EmbeddToMilvus:
             reader: JsonlBatchReader,
             parquet_manager: ParquetFileManager,
             embedding_client: TeiEmbeddingClient,
-            milvus_client: MilvusClient,
+            milvus_client: MyMilvusClient,
             mysql_client: MySQLClient,
             text_splitter: TextSplitter,
             processing_thread_num: int = 4,
@@ -152,7 +152,7 @@ class EmbeddToMilvus:
             # 执行上传
             for file_info in files_to_upload:
                 try:
-                    self.milvus_client.bulk_insert(file_info.file_path)
+                    self.milvus_client.bulk_insert(file_info.file_name,file_info.batch_file)
                 except Exception as e:
                     print(f"Error uploading file: {e}")
 
@@ -226,7 +226,7 @@ def main():
     )
 
     milvus_config = config["Milvus"]
-    milvus_client = MilvusClient(
+    milvus_client = MyMilvusClient(
         host=milvus_config["host"],
         port=milvus_config["port"],
         database=milvus_config["database"],
