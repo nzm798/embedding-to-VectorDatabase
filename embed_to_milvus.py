@@ -1,8 +1,9 @@
 import json
 import threading
+from pymilvus import MilvusClient, DataType
 from concurrent.futures import ThreadPoolExecutor
 from load_data.json_batch_reader import JsonlBatchReader
-from load_data.parquet_manager import ParquetFileManager
+from load_data.milvus_bulk_writer import MilvusBulkWriterManager
 from embedding_model.tei_req import TeiEmbeddingClient
 from splite_text.lang_chain_splitter import TextSplitter
 from vector_database.milvus_connector import MyMilvusClient
@@ -13,7 +14,7 @@ class EmbeddToMilvus:
     def __init__(
             self,
             reader: JsonlBatchReader,
-            parquet_manager: ParquetFileManager,
+            milvus_bulk_writer: MilvusBulkWriterManager,
             embedding_client: TeiEmbeddingClient,
             milvus_client: MyMilvusClient,
             mysql_client: MySQLClient,
@@ -23,7 +24,7 @@ class EmbeddToMilvus:
             max_pending_files: int = 10
     ):
         self.reader = reader
-        self.parquet_manager = parquet_manager
+        self.milvus_bulk_writer = milvus_bulk_writer
         self.embedding_client = embedding_client
         self.milvus_client = milvus_client
         self.mysql_client = mysql_client
@@ -110,7 +111,7 @@ class EmbeddToMilvus:
                         self.file_space_condition.wait()
 
                 # 写入parquet文件
-                success = self.parquet_manager.write_columns_data(columns_data, id_column="file_id")
+                success = self.milvus_bulk_writer.write_columns_data(columns_data, id_column="file_id")
 
                 # 检查是否有新的完整文件可以上传
                 self.check_and_signal_files()
@@ -121,7 +122,7 @@ class EmbeddToMilvus:
     def check_and_signal_files(self, is_finally: bool = False):
         """检查并通知有新文件可以上传"""
         with self.file_count_lock:
-            files = self.parquet_manager.get_full_files(is_finally=is_finally)
+            files = self.milvus_bulk_writer.get_full_files(include_active=is_finally)
             if files:
                 # 增加待处理文件计数
                 self.pending_files_count += len(files)
@@ -143,7 +144,7 @@ class EmbeddToMilvus:
                         continue
 
                 # 获取文件并更新计数
-                files = self.parquet_manager.process_full_files(is_finally=self.is_processing_complete)
+                files = self.milvus_bulk_writer.process_full_files(include_active=self.is_processing_complete)
                 if files:
                     files_to_upload = files
                     self.pending_files_count -= len(files)
@@ -207,11 +208,30 @@ def main():
         batch_size=reader_config["batch_size"]
     )
 
+    schema = MilvusClient.create_schema(
+        auto_id=True,
+        enable_dynamic_field=False
+    )
+    schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True, auto_id=True)
+    schema.add_field(field_name="qa_id", datatype=DataType.INT64, is_primary=False, auto_id=False)
+    schema.add_field(field_name="question", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="answer", datatype=DataType.VARCHAR, max_length=20000)
+    schema.add_field(field_name="file_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="block_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="dense_embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="sparse_embedding", datatype=DataType.SPARSE_FLOAT_VECTOR)
+    schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="flag", datatype=DataType.VARCHAR, max_length=100)
+    schema.verify()
+
     parquet_config = config["ParquetFile"]
-    parquet_manager = ParquetFileManager(
+    milvus_bulk_writer = MilvusBulkWriterManager(
+        schema=schema,
         output_dir=parquet_config["output_dir"],
         max_records_per_file=parquet_config["max_records_per_file"],
-        max_file_size_mb=parquet_config["max_file_size_mb"],
+        segment_size_mb=parquet_config["segment_size_mb"],
         max_files=parquet_config["max_files"],
         max_return_files=parquet_config["max_return_files"],
         log_file=parquet_config["log_file"],
@@ -257,7 +277,7 @@ def main():
     # 创建并运行处理器
     processor = EmbeddToMilvus(
         reader=reader,
-        parquet_manager=parquet_manager,
+        milvus_bulk_writer=milvus_bulk_writer,
         embedding_client=embedding_client,
         milvus_client=milvus_client,
         mysql_client=mysql_client,

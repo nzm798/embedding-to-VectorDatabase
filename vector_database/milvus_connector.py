@@ -135,10 +135,10 @@ class MyMilvusClient:
                 collection_name=self.collection_name,
                 files=remote_file_paths
             )
-            print(f"***********************"
+            print(f"***********************\n"
                   f"[INFO] Bulk insert task ID: {task_id} \n"
                   f"This task uploads files:\n"
-                  f"{remote_file_paths}"
+                  f"{remote_file_paths}\n"
                   f"***********************"
                   )
 
@@ -206,16 +206,16 @@ class MyMilvusClient:
 if __name__ == '__main__':
     import random
 
-    # client = MyMilvusClient(
-    #     host="192.168.0.110",
-    #     port=19530,
-    #     database="Knowledge1024Hybrid",
-    #     minio_host="192.168.0.110",
-    #     minio_port=9000,
-    #     minio_access_key="minioadmin",
-    #     minio_secret_key="minioadmin",
-    #     minio_bucket="a-bucket",
-    # )
+    client = MyMilvusClient(
+        host="192.168.0.110",
+        port=19530,
+        database="Knowledge1024Hybrid",
+        minio_host="192.168.0.110",
+        minio_port=9000,
+        minio_access_key="minioadmin",
+        minio_secret_key="minioadmin",
+        minio_bucket="a-bucket",
+    )
 
     # 2. 测试连接
     # assert client.ping(), "[FAIL] Cannot connect to Milvus!"
@@ -224,7 +224,7 @@ if __name__ == '__main__':
 
     schema = MilvusClient.create_schema(
         auto_id=True,
-        enable_dynamic_field=True
+        enable_dynamic_field=False
     )
     schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True, auto_id=True)
     schema.add_field(field_name="qa_id", datatype=DataType.INT64, is_primary=False, auto_id=False)
@@ -276,4 +276,4 @@ if __name__ == '__main__':
     parquet.write_columns_data(columns_data=data)
     file = parquet.process_full_files(include_active=True)
     print(file[0].batch_file)
-    # client.bulk_insert(file[0].file_path)
+    client.bulk_insert(file[0].file_name,file[0].batch_file)

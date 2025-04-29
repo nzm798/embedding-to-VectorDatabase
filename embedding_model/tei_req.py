@@ -21,21 +21,28 @@ class TeiEmbeddingClient:
         :return: (dense_embeddings, sparse_embeddings)
         """
         payload = {"inputs": texts}
-        url = f"http://{self.api_host}:{self.api_port}/embed_all"
+        url = f"http://{self.api_host}:{self.api_port}/embed"
         response = requests.post(url, json=payload, headers=self.headers)
 
         if response.status_code != 200:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
 
         result = response.json()
-        print(len(result))
 
-        dense_embeddings = []
-        sparse_embeddings = []
+        dense_embeddings = result
+        # 测试，之后获取正式的方法后修改
+        sparse_embeddings = [
+            {
+                364: 0.17531773447990417,
+                418: 0.145879546621,
+                630: 0.1101302548795,
+                3172: 0.268978546412,
+                5357: 0.254789645874,
+                15483: 0.215479896454225454
+            } for _ in range(len(texts))
+        ]
 
-        for item in result:
-            dense_embeddings.append(item["dense_embedding"])
-            sparse_embeddings.append(item["sparse_embedding"])
+
 
         return dense_embeddings, sparse_embeddings
 
