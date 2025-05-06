@@ -333,13 +333,6 @@ class MilvusBulkWriterManager:
                     if file_info.record_count + record_count >= self.max_records_per_file:
                         writer.commit()
                         file_info.batch_file = writer.batch_files
-                        file_size = 0
-                        if os.path.exists(file_info.file_path):
-                            # Calculate size based on all files in the directory
-                            for root, _, files in os.walk(file_info.file_path):
-                                for f in files:
-                                    file_size += os.path.getsize(os.path.join(root, f))
-                        file_info.file_size = file_size
 
                     # Update file statistics
                     current_time = datetime.now().isoformat()
@@ -385,9 +378,7 @@ class MilvusBulkWriterManager:
                                 self.current_file = None
                                 self.current_writer = None
 
-                            self.logger.info(
-                                f"File is full: {file_info.file_name}, record count: {file_info.record_count}, "
-                                f"size: {file_info.file_size_bytes / 1024 / 1024:.2f}MB")
+                            self.logger.info(f"File is full: {file_info.file_name}, record count: {file_info.record_count}")
 
                         # Save metadata
                         self._save_metadata()
@@ -457,7 +448,7 @@ class MilvusBulkWriterManager:
         with self.lock:
             full_files = self.get_full_files(include_active)
             if not full_files:
-                self.logger.info("No full files to process")
+                # self.logger.info("No full files to process")
                 return []
 
             # Log to operations log
@@ -521,7 +512,6 @@ class MilvusBulkWriterManager:
         """Get statistics about file manager status"""
         with self.lock:
             total_records = sum(info.record_count for info in self.file_info_table.values())
-            total_size_mb = sum(info.file_size_bytes for info in self.file_info_table.values()) / (1024 * 1024)
             full_files = sum(1 for info in self.file_info_table.values() if info.is_full)
             active_files = sum(1 for info in self.file_info_table.values() if not info.is_full)
             active_writers = len(self.file_writers)
@@ -532,7 +522,6 @@ class MilvusBulkWriterManager:
                 "active_files": active_files,
                 "active_writers": active_writers,
                 "total_records": total_records,
-                "total_size_mb": round(total_size_mb, 2),
                 "max_files_limit": self.max_files,
                 "can_create_new_file": active_files < self.max_files
             }

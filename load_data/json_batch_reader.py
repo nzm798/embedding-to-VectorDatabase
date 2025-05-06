@@ -72,7 +72,7 @@ class JsonlBatchReader:
 
 if __name__ == "__main__":
     # 初始化 JsonlBatchReader
-    reader = JsonlBatchReader(file_path="test_data.jsonl", start=7,end=26, batch_size=5)
+    reader = JsonlBatchReader(file_path="../test_data.jsonl", start=1, batch_size=1000)
 
     # 读取批次数据并打印输出
     batch_idx = 1

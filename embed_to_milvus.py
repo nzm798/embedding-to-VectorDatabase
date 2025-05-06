@@ -70,7 +70,7 @@ class EmbeddToMilvus:
                 pub_times = batch["pub_time"]
                 contents = batch["content"]
                 sources = batch["source"]
-                file_names = batch["file_names"]
+                file_names = batch["file_name"]
 
                 batch_num = len(batch["title"])
 
@@ -79,8 +79,7 @@ class EmbeddToMilvus:
                     if not file_id:
                         continue
                     is_exist = self.milvus_client.check_exists(file_id)
-                    if not is_exist:
-                        print(f"[INFO] {is_exist} is existed")
+                    if is_exist is not None:
                         continue
                     text = f"[标题]:{titles[i]}\n[时间]:{pub_times[i]}\n[来源]:{sources[i]}\n\n{contents[i]}"
                     blocks = self.text_splitter.split(text)
@@ -90,6 +89,10 @@ class EmbeddToMilvus:
                             file_ids.append(file_id)
                             block_ids.append(block_id)
 
+                batch_num = len(embedding_texts)
+                if batch_num == 0:
+                    continue
+                # TODO:当一个文件中数据过多是可能就超过embedding的处理能力需要进行处理
                 dense_embeddings, sparse_embeddings = self.embedding_client.embed_all(embedding_texts)
 
                 columns_data = {
@@ -98,7 +101,7 @@ class EmbeddToMilvus:
                     'answer': [""] * batch_num,  # 占位符2
                     'file_id': file_ids,
                     'block_id': block_ids,
-                    'file_name': file_names,
+                    'file_name': file_names.to_list(),
                     'content': embedding_texts,
                     'dense_embedding': dense_embeddings,
                     'sparse_embedding': sparse_embeddings,
@@ -126,7 +129,7 @@ class EmbeddToMilvus:
             files = self.milvus_bulk_writer.get_full_files(include_active=is_finally)
             if files:
                 # 增加待处理文件计数
-                self.pending_files_count += len(files)
+                self.pending_files_count = len(files)
                 # 通知上传线程有新文件可用
                 self.file_available_condition.notify_all()
 
@@ -148,7 +151,7 @@ class EmbeddToMilvus:
                 files = self.milvus_bulk_writer.process_full_files(include_active=self.is_processing_complete)
                 if files:
                     files_to_upload = files
-                    self.pending_files_count -= len(files)
+                    self.pending_files_count = len(self.milvus_bulk_writer.get_full_files())
                     # 通知有空间可以写入新文件
                     self.file_space_condition.notify_all()
             # 执行上传
@@ -191,6 +194,8 @@ class EmbeddToMilvus:
         # 关闭上传线程池
         upload_executor.shutdown(wait=True)
 
+        self.mysql_client.close()
+
         print("Data processing complete!")
 
 
@@ -227,7 +232,7 @@ def main():
     schema.add_field(field_name="flag", datatype=DataType.VARCHAR, max_length=100)
     schema.verify()
 
-    parquet_config = config["ParquetFile"]
+    parquet_config = config["MilvusBulkWriter"]
     milvus_bulk_writer = MilvusBulkWriterManager(
         schema=schema,
         output_dir=parquet_config["output_dir"],

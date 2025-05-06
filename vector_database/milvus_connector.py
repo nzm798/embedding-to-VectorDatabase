@@ -5,6 +5,7 @@ from minio.error import S3Error
 from typing import List, Optional
 import os
 import time
+import uuid
 
 
 class MyMilvusClient:
@@ -120,21 +121,23 @@ class MyMilvusClient:
         try:
             for path in parquet_file_path:  # 遍历嵌套列表中的每一个子列表
                 file_name = os.path.basename(path[0])
-                remote_file_path = os.path.join(self.remote_data_path, path_name, file_name).replace("\\", "/")
+                unique_name = f"{file_name.split('.')[0]}_{uuid.uuid4().hex[:8]}.parquet"
+                remote_file_path = os.path.join(self.remote_data_path, path_name, unique_name).replace("\\", "/")
                 # 上传文件到 MinIO
                 self.minio_client.fput_object(self.minio_bucket, remote_file_path, path[0])
                 remote_file_paths.append(remote_file_path)  # 记录已上传的文件路径
-                print(f"[INFO] Uploaded file '{file_name}' to MinIO at '{remote_file_path}'")
+                print(f"[INFO] Uploaded file '{path[0]}' to MinIO at '{remote_file_path}'")
         except S3Error as e:
             print(f"[ERROR] Failed to upload file to MinIO: {e}")
             return False
 
         # 2. 发起Milvus的bulk insert
         try:
-            task_id = utility.do_bulk_insert(
-                collection_name=self.collection_name,
-                files=remote_file_paths
-            )
+            for path in remote_file_paths:
+                task_id = utility.do_bulk_insert(
+                    collection_name=self.collection_name,
+                    files=[path]
+                )
             print(f"***********************\n"
                   f"[INFO] Bulk insert task ID: {task_id} \n"
                   f"This task uploads files:\n"
