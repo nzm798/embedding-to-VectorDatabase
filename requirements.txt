@@ -1,9 +1,10 @@
-langchain==0.3.24
+langchain==0.3.25
 minio==7.2.15
+numpy==2.2.5
 pandas==2.2.3
-polars==1.27.1
+polars==1.29.0
 pyarrow==20.0.0
+pymilvus==2.4.4
 pymilvus[bulk_writer]==2.4.4
-pymysql==1.1.1
+PyMySQL==1.1.1
 Requests==2.32.3
-marshmallow==3.20.1
