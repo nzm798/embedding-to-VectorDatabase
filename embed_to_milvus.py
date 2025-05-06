@@ -2,6 +2,8 @@ import json
 import threading
 from pymilvus import MilvusClient, DataType
 from concurrent.futures import ThreadPoolExecutor
+
+from embedding_model.allembed_req import AllEmbeddingClient
 from load_data.json_batch_reader import JsonlBatchReader
 from load_data.milvus_bulk_writer import MilvusBulkWriterManager
 from embedding_model.tei_req import TeiEmbeddingClient
@@ -15,7 +17,7 @@ class EmbeddToMilvus:
             self,
             reader: JsonlBatchReader,
             milvus_bulk_writer: MilvusBulkWriterManager,
-            embedding_client: TeiEmbeddingClient,
+            embedding_client,
             milvus_client: MyMilvusClient,
             mysql_client: MySQLClient,
             text_splitter: TextSplitter,
@@ -76,7 +78,7 @@ class EmbeddToMilvus:
                     file_id = self.mysql_client.get_id_by_filename(file_names[i])
                     if not file_id:
                         continue
-                    is_exist=self.milvus_client.check_exists(file_id)
+                    is_exist = self.milvus_client.check_exists(file_id)
                     if not is_exist:
                         print(f"[INFO] {is_exist} is existed")
                         continue
@@ -91,19 +93,18 @@ class EmbeddToMilvus:
                 dense_embeddings, sparse_embeddings = self.embedding_client.embed_all(embedding_texts)
 
                 columns_data = {
-                    'qa_id':[0] * batch_num,  # 占位符ID
-                    'question':[""] * batch_num,  # 占位符1
-                    'answer':[""] * batch_num,  # 占位符2
-                    'file_id':file_ids,
-                    'block_id':block_ids,
-                    'file_name':file_names,
-                    'content':embedding_texts,
-                    'dense_embedding':dense_embeddings,
-                    'sparse_embedding':sparse_embeddings,
-                    'source':[""] * batch_num,  # 占位符3
-                    'flag':["0"] * batch_num  # 占位符4
+                    'qa_id': [0] * batch_num,  # 占位符ID
+                    'question': [""] * batch_num,  # 占位符1
+                    'answer': [""] * batch_num,  # 占位符2
+                    'file_id': file_ids,
+                    'block_id': block_ids,
+                    'file_name': file_names,
+                    'content': embedding_texts,
+                    'dense_embedding': dense_embeddings,
+                    'sparse_embedding': sparse_embeddings,
+                    'source': [""] * batch_num,  # 占位符3
+                    'flag': ["0"] * batch_num  # 占位符4
                 }
-
 
                 # 等待，直到有足够的空间写入新文件
                 with self.file_count_lock:
@@ -153,7 +154,7 @@ class EmbeddToMilvus:
             # 执行上传
             for file_info in files_to_upload:
                 try:
-                    self.milvus_client.bulk_insert(file_info.file_name,file_info.batch_file)
+                    self.milvus_client.bulk_insert(file_info.file_name, file_info.batch_file)
                 except Exception as e:
                     print(f"Error uploading file: {e}")
 
@@ -243,6 +244,11 @@ def main():
         api_host=embedding_config["host"],
         api_port=embedding_config["port"],
         api_key=embedding_config["key"]
+    )
+
+    allembed_client = AllEmbeddingClient(
+        api_host=embedding_config["host"],
+        api_port=embedding_config["port"]
     )
 
     milvus_config = config["Milvus"]
