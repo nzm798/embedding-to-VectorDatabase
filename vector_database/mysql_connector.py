@@ -2,7 +2,7 @@ import pymysql
 from typing import Optional
 
 class MySQLClient:
-    def __init__(self, host: str, port: int, user: str, password: str, database: str):
+    def __init__(self, host: str, port: int, user: str, password: str, database: str,table_name:str):
         """
         初始化MySQL连接，只连一次
         """
@@ -16,15 +16,16 @@ class MySQLClient:
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True  # 自动提交，避免忘了commit
         )
+        self.table_name = table_name
         print("[INFO] MySQL connection established.")
 
-    def get_id_by_filename(self, table_name: str, file_name: str) -> Optional[int]:
+    def get_id_by_filename(self, file_name: str) -> Optional[int]:
         """
         根据文件名查询对应的ID
         """
         try:
             with self.connection.cursor() as cursor:
-                sql = f"SELECT id FROM `{table_name}` WHERE file_name = %s LIMIT 1"
+                sql = f"SELECT id FROM `{self.table_name}` WHERE file_name = %s LIMIT 1"
                 cursor.execute(sql, (file_name,))
                 result = cursor.fetchone()
                 if result:

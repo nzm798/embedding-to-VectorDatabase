@@ -1,7 +1,7 @@
 import re
 
 def clean_title(title):
-    clean_title=re.sub(r'^\u4e00-\u9fa5a-zA-Z0-9', '', title)
+    clean_title=re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9_\-\s]', '', title)
     if len(clean_title) > 50:
         clean_title = clean_title[:50]
     if not clean_title:

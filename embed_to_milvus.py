@@ -276,7 +276,8 @@ def main():
         port=mysql_config["port"],
         user=mysql_config["user"],
         password=mysql_config["password"],
-        database=mysql_config["database"]
+        database=mysql_config["database"],
+        table_name=mysql_config["table_name"]
     )
 
     splitter_config = config["Splitter"]

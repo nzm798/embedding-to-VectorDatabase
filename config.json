@@ -9,7 +9,8 @@
     "port": 3306,
     "user": "szzf",
     "password": "jRzZHvnjRm1kJ9fRj5SL",
-    "database": "dimension_beijing_xicheng"
+    "database": "dimension_beijing_xicheng",
+    "table_name": ""
   },
   "Milvus": {
     "host": "192.168.0.110",
