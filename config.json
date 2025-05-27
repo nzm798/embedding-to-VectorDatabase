@@ -28,7 +28,7 @@
     "file_path": "./test_data.jsonl",
     "start": 1,
     "end": null,
-    "batch_size": 32
+    "batch_size": 64
   },
   "ParquetFile": {
     "output_dir": "parquet",
@@ -44,8 +44,8 @@
     "output_dir": "parquet",
     "max_records_per_file": 10000,
     "segment_size_mb": 512,
-    "max_files": 10,
-    "max_return_files": 5,
+    "max_files": 16,
+    "max_return_files": 8,
     "log_file": "./logs/parquet_operations.log",
     "metadata_file": "./logs/parquet_metadata.json"
   },

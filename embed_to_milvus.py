@@ -60,6 +60,9 @@ class EmbeddToMilvus:
             # 如果没有更多批次，结束处理
             if batch is None:
                 break
+            conn, cursor = self.mysql_client.get_conn()
+            if not conn or not cursor:
+                break
 
             try:
                 embedding_texts = []
@@ -75,7 +78,7 @@ class EmbeddToMilvus:
                 batch_num = len(batch["title"])
 
                 for i in range(batch_num):
-                    file_id = self.mysql_client.get_id_by_filename(file_names[i])
+                    file_id = self.mysql_client.get_id_by_filename(file_names[i], conn, cursor)
                     if not file_id:
                         continue
                     is_exist = self.milvus_client.check_exists(file_id)
@@ -88,7 +91,8 @@ class EmbeddToMilvus:
                             embedding_texts.append(content)
                             file_ids.append(file_id)
                             block_ids.append(block_id)
-
+                conn.close()
+                cursor.close()
                 batch_num = len(embedding_texts)
                 if batch_num == 0:
                     continue
@@ -121,6 +125,9 @@ class EmbeddToMilvus:
                 self.check_and_signal_files()
 
             except Exception as e:
+                conn.close()
+                cursor.close()
+                self.mysql_client.close()
                 print(f"Error processing batch: {e}")
 
     def check_and_signal_files(self, is_finally: bool = False):
