@@ -9,15 +9,16 @@ from uuid import uuid4
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-batch_size = 2 # gpu batch_size in order of your available vram
-max_request = 10 # max request for future improvements on api calls / gpu batches (for now is pretty basic)
-max_length = 5000 # max context length for embeddings and passages in re-ranker
-max_q_length = 256 # max context lenght for questions in re-ranker
-request_flush_timeout = .1 # flush time out for future improvements on api calls / gpu batches (for now is pretty basic)
-rerank_weights = [0.4, 0.2, 0.4] # re-rank score weights
+batch_size = 2  # gpu batch_size in order of your available vram
+max_request = 10  # max request for future improvements on api calls / gpu batches (for now is pretty basic)
+max_length = 5000  # max context length for embeddings and passages in re-ranker
+max_q_length = 256  # max context lenght for questions in re-ranker
+request_flush_timeout = .1  # flush time out for future improvements on api calls / gpu batches (for now is pretty basic)
+rerank_weights = [0.4, 0.2, 0.4]  # re-rank score weights
 request_time_out = 30  # Timeout threshold
-gpu_time_out = 5 # gpu processing timeout threshold
-port= 3000
+gpu_time_out = 5  # gpu processing timeout threshold
+port = 7300
+
 
 class m3Wrapper:
     def __init__(self, model_name: str, device: str = 'cuda'):
@@ -38,17 +39,23 @@ class m3Wrapper:
         )['colbert+sparse+dense']
         return scores
 
+
 class EmbedRequest(BaseModel):
     sentences: List[str]
+
 
 class RerankRequest(BaseModel):
     sentence_pairs: List[Tuple[str, str]]
 
+
 class EmbedResponse(BaseModel):
     embeddings: List[List[float]]
+    sparse_embeddings: List[dict]
+
 
 class RerankResponse(BaseModel):
     scores: List[float]
+
 
 class RequestProcessor:
     def __init__(self, model: m3Wrapper, max_request_to_flush: int, accumulation_timeout: float):
@@ -93,9 +100,11 @@ class RequestProcessor:
         tasks = []
         for request_data, request_type, request_id in zip(requests, request_types, request_ids):
             if request_type == 'embed':
-                task = asyncio.create_task(self.run_with_semaphore(self.model.embed, request_data.sentences, request_id))
+                task = asyncio.create_task(
+                    self.run_with_semaphore(self.model.embed, request_data.sentences, request_id))
             else:  # 'rerank'
-                task = asyncio.create_task(self.run_with_semaphore(self.model.rerank, request_data.sentence_pairs, request_id))
+                task = asyncio.create_task(
+                    self.run_with_semaphore(self.model.rerank, request_data.sentence_pairs, request_id))
             tasks.append(task)
         await asyncio.gather(*tasks)
 
@@ -103,14 +112,15 @@ class RequestProcessor:
         async with self.gpu_lock:  # Wait for sem
             future = self.executor.submit(func, data)
             try:
-                result = await asyncio.wait_for(asyncio.wrap_future(future), timeout= gpu_time_out)
+                result = await asyncio.wait_for(asyncio.wrap_future(future), timeout=gpu_time_out)
                 self.response_futures[request_id].set_result(result)
             except asyncio.TimeoutError:
                 self.response_futures[request_id].set_exception(TimeoutError("GPU processing timeout"))
             except Exception as e:
                 self.response_futures[request_id].set_exception(e)
-    
+
     async def process_request(self, request_data: Union[EmbedRequest, RerankRequest], request_type: str):
+        # TODO:add the sparse embedding
         try:
             await self.ensure_processing_loop_started()
             request_id = str(uuid4())
@@ -120,11 +130,13 @@ class RequestProcessor:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
+
 app = FastAPI()
 
 # Initialize the model and request processor
-model = m3Wrapper('BAAI/bge-m3')
-processor = RequestProcessor(model, accumulation_timeout= request_flush_timeout, max_request_to_flush= max_request)
+model = m3Wrapper('D:\Users\nzm\llm_embedding_model\BAAI/bge-m3')
+processor = RequestProcessor(model, accumulation_timeout=request_flush_timeout, max_request_to_flush=max_request)
+
 
 # Adding a middleware returning a 504 error if the request processing time is above a certain threshold
 @app.middleware("http")
@@ -139,16 +151,20 @@ async def timeout_middleware(request: Request, call_next):
                              'processing_time': process_time},
                             status_code=HTTP_504_GATEWAY_TIMEOUT)
 
+
 @app.post("/embeddings/", response_model=EmbedResponse)
 async def get_embeddings(request: EmbedRequest):
-    embeddings = await processor.process_request(request, 'embed')
-    return EmbedResponse(embeddings=embeddings)
+    embeddings, sparse_embeddings = await processor.process_request(request, 'embed')
+    return EmbedResponse(embeddings=embeddings, sparse_embeddings=sparse_embeddings)
+
 
 @app.post("/rerank/", response_model=RerankResponse)
 async def rerank(request: RerankRequest):
     scores = await processor.process_request(request, 'rerank')
     return RerankResponse(scores=scores)
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port= port)
+
+    uvicorn.run(app, host="0.0.0.0", port=port)
