@@ -1,7 +1,7 @@
 {
   "TeiEmbed": {
-    "host": "192.168.0.110",
-    "port": 8080,
+    "host": "192.168.35.240",
+    "port": 7200,
     "key": null
   },
   "Mysql": {
@@ -10,14 +10,14 @@
     "user": "szzf",
     "password": "jRzZHvnjRm1kJ9fRj5SL",
     "database": "dimension_beijing_xicheng",
-    "table_name": ""
+    "table_name": "knowledge_document_library"
   },
   "Milvus": {
-    "host": "192.168.0.110",
+    "host": "192.168.35.240",
     "port": 19530,
     "database": "Knowledge1024Hybrid",
-    "collection_name": "telecom_dag_index_news",
-    "minio_host": "192.168.0.110",
+    "collection_name": "telecom_dag_index_test",
+    "minio_host": "192.168.35.240",
     "minio_port": 9000,
     "minio_access_key": "minioadmin",
     "minio_secret_key": "minioadmin",
@@ -25,9 +25,9 @@
     "remote_data_path": "parquet"
   },
   "BatchReader": {
-    "file_path": "./test_data.jsonl",
+    "file_path": "./news_corpus20250321.jsonl",
     "start": 1,
-    "end": null,
+    "end": 100000,
     "batch_size": 64
   },
   "ParquetFile": {

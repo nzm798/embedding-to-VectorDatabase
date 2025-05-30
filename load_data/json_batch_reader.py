@@ -59,7 +59,7 @@ class JsonlBatchReader:
             titles=batch["title"]
             # 将每一行的文件名设置为 title_num.txt，其中 num 是该行的全局行号
             file_names = [
-                f"{clean_title(titles[i])}_{self.global_idx + i}.txt" for i in range(batch_size)
+                f"{clean_title(titles[i])}_{self.global_idx + i}.pdf" for i in range(batch_size)
             ]
 
             # 将文件名作为新的一列加入到批次数据中
@@ -72,13 +72,35 @@ class JsonlBatchReader:
 
 if __name__ == "__main__":
     # 初始化 JsonlBatchReader
-    reader = JsonlBatchReader(file_path="../test_data.jsonl", start=1, batch_size=1000)
-
+    reader = JsonlBatchReader(file_path="../news_corpus20250321.jsonl", start=1,batch_size=1000)
+    import pymysql
+    connection = pymysql.connect(
+            host="192.168.35.231",
+            port=3306,
+            user="szzf",
+            password="jRzZHvnjRm1kJ9fRj5SL",
+            database="dimension_beijing_xicheng",
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True  # 自动提交，避免忘了commit
+        )
+    
     # 读取批次数据并打印输出
     batch_idx = 1
     while reader.has_next_batch():
         batch = reader.next_batch()
         print(f"Batch {batch_idx}:")
-        print(batch)
+        # print(batch)
+        file_name=batch['file_name'][0]
+        print(f"SELECT id FROM `knowledge_document_library` WHERE name = {file_name} LIMIT 1")
+        with connection.cursor() as cursor:
+            sql = f"SELECT id FROM `knowledge_document_library` WHERE name = %s LIMIT 1"
+            cursor.execute(sql, (file_name,))
+            print(f"SELECT id FROM `knowledge_document_library` WHERE name = {file_name} LIMIT 1")
+            result = cursor.fetchone()
+            if result:
+                print(result['id']) 
+            else:
+                print(None)
 
         batch_idx += 1

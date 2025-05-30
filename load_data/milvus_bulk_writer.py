@@ -308,7 +308,6 @@ class MilvusBulkWriterManager:
         try:
             # Convert input data to row format (no lock needed)
             rows = self._convert_to_row_format(data)
-
             if not rows:
                 self.logger.warning("Attempted to write empty data, ignored")
                 return False
@@ -552,3 +551,50 @@ class MilvusBulkWriterManager:
         except Exception:
             # Avoid raising exceptions in destructor
             pass
+
+
+if __name__=="__main__":
+
+    schema = MilvusClient.create_schema(
+        auto_id=True,
+        enable_dynamic_field=False
+    )
+    schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True, auto_id=True)
+    schema.add_field(field_name="qa_id", datatype=DataType.INT64, is_primary=False, auto_id=False)
+    schema.add_field(field_name="question", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="answer", datatype=DataType.VARCHAR, max_length=20000)
+    schema.add_field(field_name="file_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="block_id", datatype=DataType.INT64, is_primary=False)
+    schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="dense_embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="sparse_embedding", datatype=DataType.SPARSE_FLOAT_VECTOR)
+    schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="flag", datatype=DataType.VARCHAR, max_length=100)
+    schema.verify()
+
+    milvus_bulk_writer = MilvusBulkWriterManager(
+        schema=schema,
+        output_dir="parquet",
+        max_records_per_file=2,
+        segment_size_mb=512,
+        max_files=16,
+        max_return_files=8,
+        log_file="./logs/parquet_operations.log",
+        metadata_file="./logs/parquet_metadata.json"
+    )
+    batch_num=2
+    columns_data = {
+                    'qa_id': [0]*batch_num,  # 占位符ID
+                    'question': [""] * batch_num,  # 占位符1
+                    'answer': [""] * batch_num,  # 占位符2
+                    'file_id': [1953,1456],
+                    'block_id': [1,2],
+                    'file_name': ["Lookmyeyes","whoyouare"],
+                    'content': ["lulu","kaifanle"],
+                    'dense_embedding': [[0.254]*1024,[0.5458]*1024],
+                    'sparse_embedding': [{1:0.235},{2:0.5789544}],
+                    'source': [""] * batch_num,  # 占位符3
+                    'flag': ["0"] * batch_num  # 占位符4
+                }
+    success = milvus_bulk_writer.write_columns_data(columns_data, id_column="file_id")

@@ -10,6 +10,7 @@ from embedding_model.tei_req import TeiEmbeddingClient
 from splite_text.lang_chain_splitter import TextSplitter
 from vector_database.milvus_connector import MyMilvusClient
 from vector_database.mysql_connector import MySQLClient
+from util.clean_data import change_sparse_int
 
 
 class EmbeddToMilvus:
@@ -63,11 +64,11 @@ class EmbeddToMilvus:
             conn, cursor = self.mysql_client.get_conn()
             if not conn or not cursor:
                 break
-
             try:
                 embedding_texts = []
                 file_ids = []
                 block_ids = []
+                final_file_names = []
                 # 提取文章标题和内容
                 titles = batch["title"]
                 pub_times = batch["pub_time"]
@@ -76,7 +77,7 @@ class EmbeddToMilvus:
                 file_names = batch["file_name"]
 
                 batch_num = len(batch["title"])
-
+                
                 for i in range(batch_num):
                     file_id = self.mysql_client.get_id_by_filename(file_names[i], conn, cursor)
                     if not file_id:
@@ -91,6 +92,7 @@ class EmbeddToMilvus:
                             embedding_texts.append(content)
                             file_ids.append(file_id)
                             block_ids.append(block_id)
+                            final_file_names.append(file_names[i])
                 conn.close()
                 cursor.close()
                 batch_num = len(embedding_texts)
@@ -98,21 +100,24 @@ class EmbeddToMilvus:
                     continue
                 # TODO:当一个文件中数据过多是可能就超过embedding的处理能力需要进行处理
                 dense_embeddings, sparse_embeddings = self.embedding_client.embed_all(embedding_texts)
-
+                # 将Key中的str 改成 int
+                sparse_embeddings = change_sparse_int(sparse_embeddings)
+                if not sparse_embeddings:
+                    break
                 columns_data = {
-                    'qa_id': [0] * batch_num,  # 占位符ID
+                    'qa_id': [0]*batch_num,  # 占位符ID
                     'question': [""] * batch_num,  # 占位符1
                     'answer': [""] * batch_num,  # 占位符2
                     'file_id': file_ids,
                     'block_id': block_ids,
-                    'file_name': file_names.to_list(),
+                    'file_name': final_file_names,
                     'content': embedding_texts,
                     'dense_embedding': dense_embeddings,
                     'sparse_embedding': sparse_embeddings,
                     'source': [""] * batch_num,  # 占位符3
                     'flag': ["0"] * batch_num  # 占位符4
                 }
-
+                
                 # 等待，直到有足够的空间写入新文件
                 with self.file_count_lock:
                     while self.pending_files_count >= self.max_pending_files:
@@ -127,7 +132,6 @@ class EmbeddToMilvus:
             except Exception as e:
                 conn.close()
                 cursor.close()
-                self.mysql_client.close()
                 print(f"Error processing batch: {e}")
 
     def check_and_signal_files(self, is_finally: bool = False):
@@ -297,7 +301,7 @@ def main():
     processor = EmbeddToMilvus(
         reader=reader,
         milvus_bulk_writer=milvus_bulk_writer,
-        embedding_client=embedding_client,
+        embedding_client=allembed_client,
         milvus_client=milvus_client,
         mysql_client=mysql_client,
         text_splitter=text_splitter,

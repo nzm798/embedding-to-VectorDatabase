@@ -45,7 +45,7 @@ class MySQLClient:
             print(f"[ERROR] Invalid database connection or cursor.")
             return None
         try:
-            sql = f"SELECT id FROM `{self.table_name}` WHERE file_name = %s LIMIT 1"
+            sql = f"SELECT id FROM `{self.table_name}` WHERE name = %s LIMIT 1"
             cursor.execute(sql, (file_name,))
             result = cursor.fetchone()
             if result:
@@ -63,3 +63,15 @@ class MySQLClient:
         if self.pool:
             self.pool.close()
             print("[INFO] MySQL connection pool closed.")
+
+
+if __name__=="__main__":
+    mysql_client = MySQLClient(
+        host="192.168.35.231",
+        port=3306,
+        user="szzf",
+        password="jRzZHvnjRm1kJ9fRj5SL",
+        database="dimension_beijing_xicheng",
+        table_name="knowledge_document_library"
+    )
+    print(mysql_client.get_id_by_filename("合肥市延长集中供暖_37765.pdf"))
