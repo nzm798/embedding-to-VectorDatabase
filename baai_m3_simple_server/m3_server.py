@@ -24,10 +24,19 @@ class m3Wrapper:
     def __init__(self, model_name: str, device: str = 'cuda'):
         self.model = BGEM3FlagModel(model_name, device=device, use_fp16=True if device != 'cpu' else False)
 
-    def embed(self, sentences: List[str]) -> List[List[float]]:
-        embeddings = self.model.encode(sentences, batch_size=batch_size, max_length=max_length)['dense_vecs']
+    def embed(self, sentences: List[str]) -> Tuple[List[List[float]], List[dict]]:
+        output = self.model.encode(sentences, return_dense=True, return_sparse=True, batch_size=batch_size,
+                                   max_length=max_length)
+        embeddings = output['dense_vecs']
         embeddings = embeddings.tolist()
-        return embeddings
+        sparse_embeddings = []
+
+        for weights in output['lexical_weights']:
+            non_zero_indices = [int(i) for i in weights.indices.tolist()]
+            non_zero_values = [float(v) for v in weights.values.tolist()]
+            sparse_dict = dict(zip(non_zero_indices, non_zero_values))
+            sparse_embeddings.append(sparse_dict)
+        return embeddings, sparse_embeddings
 
     def rerank(self, sentence_pairs: List[Tuple[str, str]]) -> List[float]:
         scores = self.model.compute_score(
