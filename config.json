@@ -16,7 +16,7 @@
     "host": "192.168.35.240",
     "port": 19530,
     "database": "Knowledge1024Hybrid",
-    "collection_name": "telecom_dag_index_test",
+    "collection_name": "telecom_dag_index_news",
     "minio_host": "192.168.35.240",
     "minio_port": 9000,
     "minio_access_key": "minioadmin",
@@ -26,13 +26,13 @@
   },
   "BatchReader": {
     "file_path": "./news_corpus20250321.jsonl",
-    "start": 1,
-    "end": 100000,
-    "batch_size": 64
+    "start": 2361945,
+    "end": 5000000,
+    "batch_size": 16
   },
   "ParquetFile": {
     "output_dir": "parquet",
-    "max_records_per_file": 100000,
+    "max_records_per_file": 10000,
     "max_file_size_mb": 1024,
     "max_files": 8,
     "max_return_files": 4,
@@ -42,10 +42,10 @@
   "MilvusBulkWriter": {
     "schema": null,
     "output_dir": "parquet",
-    "max_records_per_file": 10000,
+    "max_records_per_file": 1000,
     "segment_size_mb": 512,
-    "max_files": 16,
-    "max_return_files": 8,
+    "max_files": 4,
+    "max_return_files": 2,
     "log_file": "./logs/parquet_operations.log",
     "metadata_file": "./logs/parquet_metadata.json"
   },

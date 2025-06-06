@@ -3,7 +3,14 @@ import threading
 
 from util.clean_data import clean_title
 
-
+#def clean_title(title):
+#    import re
+#    clean_title=re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]','',title.strip())
+#    if len(clean_title) > 50:
+#        clean_title = clean_title[:50]
+#    if not clean_title:
+#        return "untitled"
+#    return clean_title
 class JsonlBatchReader:
     def __init__(self, file_path: str, start: int = 1, end: int = None, batch_size: int = 1000):
         """
@@ -72,7 +79,7 @@ class JsonlBatchReader:
 
 if __name__ == "__main__":
     # 初始化 JsonlBatchReader
-    reader = JsonlBatchReader(file_path="../news_corpus20250321.jsonl", start=1,batch_size=1000)
+    reader = JsonlBatchReader(file_path="../news_corpus20250321.jsonl", start=2079262,batch_size=1000)
     import pymysql
     connection = pymysql.connect(
             host="192.168.35.231",

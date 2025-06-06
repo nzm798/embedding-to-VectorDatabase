@@ -8,8 +8,8 @@ class AllEmbeddingClient:
         self.api_port = api_port
 
         self.headers = {
-            "Content-Type": "application/json",
-            "accept": "application/json"
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
         }
 
     def embed_all(self, texts: List[str]):
@@ -19,8 +19,14 @@ class AllEmbeddingClient:
         :return: (dense_embeddings, sparse_embeddings)
         """
         payload = {"sentences": texts}
-        url = f"http://{self.api_host}:{self.api_port}/v2/embeddings"
-        response = requests.post("POST",url, json=payload, headers=self.headers)
+        url = f'http://{self.api_host}:{self.api_port}/v2/embeddings'
+        response = requests.request("POST", url,  headers=self.headers,json=payload)
         dense_embeddings = [_dic["dense_embedding"] for _dic in response.json()["data"]]
         sparse_embeddings= [_dic["sparse_embedding"] for _dic in response.json()["data"]]
         return dense_embeddings, sparse_embeddings
+
+if __name__=="__main__":
+    text=["我是一个配角、一个小配角！"]
+    client=AllEmbeddingClient("192.168.35.240",7200)
+    dense,sparse=client.embed_all(text)
+    print(dense)

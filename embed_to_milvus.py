@@ -81,9 +81,12 @@ class EmbeddToMilvus:
                 for i in range(batch_num):
                     file_id = self.mysql_client.get_id_by_filename(file_names[i], conn, cursor)
                     if not file_id:
+                        print(f"[WORNING] Mysql中不存在:{file_names[i]}")
                         continue
+                    
                     is_exist = self.milvus_client.check_exists(file_id)
                     if is_exist is not None:
+                        print(f"[INFO] 文件在milvus里已存在:{file_names[i]}，file_id:{file_id}")
                         continue
                     text = f"[标题]:{titles[i]}\n[时间]:{pub_times[i]}\n[来源]:{sources[i]}\n\n{contents[i]}"
                     blocks = self.text_splitter.split(text)
@@ -133,6 +136,13 @@ class EmbeddToMilvus:
                 conn.close()
                 cursor.close()
                 print(f"Error processing batch: {e}")
+                Error_files=f'''
+                *******************************************************
+                ERROR EMBEDDING FILES NAME:
+                {final_file_names}
+                *******************************************************
+                '''
+                print(Error_files)
 
     def check_and_signal_files(self, is_finally: bool = False):
         """检查并通知有新文件可以上传"""
@@ -174,12 +184,14 @@ class EmbeddToMilvus:
 
     def run(self):
         """启动整个处理流程"""
+        import time
         processing_threads = []
         for _ in range(self.processing_thread_num):
             thread = threading.Thread(target=self.process_batch_and_write)
             thread.daemon = True
             processing_threads.append(thread)
             thread.start()
+            time.sleep(30)
 
         # 启动上传线程池
         upload_executor = ThreadPoolExecutor(max_workers=self.upload_thread_num)
@@ -305,8 +317,8 @@ def main():
         milvus_client=milvus_client,
         mysql_client=mysql_client,
         text_splitter=text_splitter,
-        processing_thread_num=4,  # 处理数据的线程数
-        upload_thread_num=2,  # 上传到Milvus的线程数
+        processing_thread_num=8,  # 处理数据的线程数
+        upload_thread_num=4,  # 上传到Milvus的线程数
         max_pending_files=10  # 最大待处理文件数量
     )
 

@@ -28,7 +28,7 @@ def reformat_txt(data):
 def change_sparse_int(sparse_embeddings):
     new_sparse_embeddings=[]
     for sparse_embedding in sparse_embeddings:
-        new_sparse_embedding = {}
+        new_sparse_embedding={}
         for key,value in sparse_embedding.items():
             try:
                 new_key=int(key)
