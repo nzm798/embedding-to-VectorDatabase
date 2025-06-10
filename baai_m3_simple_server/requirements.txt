@@ -1,3 +1,6 @@
 fastapi
-flagembedding
+FlagEmbedding==1.2.5
 uvicorn
+transformers==4.35.2
+torch==2.1.0
+torch-npu==2.1.0.post11.dev20241224

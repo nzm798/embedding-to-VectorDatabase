@@ -32,8 +32,8 @@ class m3Wrapper:
         sparse_embeddings = []
 
         for weights in output['lexical_weights']:
-            non_zero_indices = [int(i) for i in weights.indices.tolist()]
-            non_zero_values = [float(v) for v in weights.values.tolist()]
+            non_zero_indices = [int(i) for i in weights.keys()]
+            non_zero_values = [float(v) for v in weights.values()]
             sparse_dict = dict(zip(non_zero_indices, non_zero_values))
             sparse_embeddings.append(sparse_dict)
         return embeddings, sparse_embeddings
@@ -143,7 +143,7 @@ class RequestProcessor:
 app = FastAPI()
 
 # Initialize the model and request processor
-model = m3Wrapper('D:\Users\nzm\llm_embedding_model\BAAI/bge-m3')
+model = m3Wrapper('/data/BAAI/bge-m3', device='npu:0')
 processor = RequestProcessor(model, accumulation_timeout=request_flush_timeout, max_request_to_flush=max_request)
 
 
@@ -176,4 +176,4 @@ async def rerank(request: RerankRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
