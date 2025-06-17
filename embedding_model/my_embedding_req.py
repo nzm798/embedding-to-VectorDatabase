@@ -21,6 +21,8 @@ class MyEmbeddingClient:
         payload = {"sentences": texts}
         url = f'http://{self.api_host}:{self.api_port}/embeddings'
         response = requests.request("POST", url,  headers=self.headers,json=payload)
+        if response.status_code != 200:
+            raise Exception(f"Request failed: {response.status_code}--{response.text}")
         dense_embeddings = response.json()['embeddings']
         sparse_embeddings= response.json()['sparse_embeddings']
         return dense_embeddings, sparse_embeddings

@@ -9,14 +9,14 @@ from uuid import uuid4
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-batch_size = 2  # gpu batch_size in order of your available vram
+batch_size = 64  # gpu batch_size in order of your available vram
 max_request = 10  # max request for future improvements on api calls / gpu batches (for now is pretty basic)
-max_length = 5000  # max context length for embeddings and passages in re-ranker
+max_length = 10000  # max context length for embeddings and passages in re-ranker
 max_q_length = 256  # max context lenght for questions in re-ranker
 request_flush_timeout = .1  # flush time out for future improvements on api calls / gpu batches (for now is pretty basic)
 rerank_weights = [0.4, 0.2, 0.4]  # re-rank score weights
 request_time_out = 30  # Timeout threshold
-gpu_time_out = 5  # gpu processing timeout threshold
+gpu_time_out = 10  # gpu processing timeout threshold
 port = 7300
 
 
@@ -146,7 +146,6 @@ app = FastAPI()
 model = m3Wrapper('/data/BAAI/bge-m3', device='npu:0')
 processor = RequestProcessor(model, accumulation_timeout=request_flush_timeout, max_request_to_flush=max_request)
 
-
 # Adding a middleware returning a 504 error if the request processing time is above a certain threshold
 @app.middleware("http")
 async def timeout_middleware(request: Request, call_next):
@@ -176,4 +175,4 @@ async def rerank(request: RerankRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=port)

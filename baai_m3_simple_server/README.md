@@ -1,3 +1,9 @@
+# 启动命令
+
+~~~
+docker run -itd --net=host --restart always --shm-size=50g --name=embedding_server --device=/dev/davinci_manager --device=/dev/hisi_hdc --device=/dev/devmm_svm --device=/dev/davinci7 -v /usr/local/Ascend/driver:/usr/local/Ascend/driver -v /usr/local/Ascend/add-ons/:/usr/local/Ascend/add-ons/ -v /usr/local/Ascend/firmware:/usr/local/Ascend/firmware -v /usr/local/sbin/npu-smi:/usr/local/sbin/npu-smi -v /usr/local/sbin/:/usr/local/sbin/ -v /var/log/npu/conf/slog/slog.conf:/var/log/npu/conf/slog/slog.conf  -v /var/log/npu/profiling/:/var/log/npu/profiling -v /var/log/npu/dump/:/var/log/npu/dump -v /etc/hccn.conf:/etc/hccn.conf -v /var/log/npu/:/usr/slog -v /etc/localtime:/etc/localtime -v ./embedding-to-VectorDatabase:/workspace -w /workspace -v ./embedding_model:/data embedding_server:v1 bash
+~~~
+
 # BAAI bge_m3 Multilingual Model Server
 
 This server setup uses FastAPI to handle asynchronous requests for text embeddings and reranking tasks with the BAAI bge_m3 multilingual model. Designed for demonstration and testing, it showcases efficient request handling, including batching and GPU resource management, in a local environment setting. While not recommended for production, it's robust for testing purposes.
