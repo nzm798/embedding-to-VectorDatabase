@@ -9,14 +9,14 @@ from uuid import uuid4
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-batch_size = 64  # gpu batch_size in order of your available vram
-max_request = 10  # max request for future improvements on api calls / gpu batches (for now is pretty basic)
+batch_size = 128  # gpu batch_size in order of your available vram
+max_request = 20  # max request for future improvements on api calls / gpu batches (for now is pretty basic)
 max_length = 10000  # max context length for embeddings and passages in re-ranker
 max_q_length = 256  # max context lenght for questions in re-ranker
 request_flush_timeout = .1  # flush time out for future improvements on api calls / gpu batches (for now is pretty basic)
 rerank_weights = [0.4, 0.2, 0.4]  # re-rank score weights
-request_time_out = 30  # Timeout threshold
-gpu_time_out = 10  # gpu processing timeout threshold
+request_time_out = 120  # Timeout threshold
+gpu_time_out = 120  # gpu processing timeout threshold
 port = 7300
 
 
