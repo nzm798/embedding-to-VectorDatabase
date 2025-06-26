@@ -21,32 +21,31 @@ class TeiEmbeddingClient:
         :return: (dense_embeddings, sparse_embeddings)
         """
         payload = {"inputs": texts}
-        url = f"http://{self.api_host}:{self.api_port}/embed"
-        response = requests.post(url, json=payload, headers=self.headers)
+        dense_url = f"http://{self.api_host}:{self.api_port}/embed"
+        dense_response = requests.post(dense_url, json=payload, headers=self.headers)
+        if dense_response.status_code != 200:
+            raise Exception(f"Request failed: {dense_response.status_code}, {dense_response.text}")
 
-        if response.status_code != 200:
-            raise Exception(f"Request failed: {response.status_code}, {response.text}")
+        dense_embeddings = dense_response.json()
 
-        result = response.json()
+        sparse_url = f"http://{self.api_host}:{self.api_port}/embed_sparse"
+        sparse_response = requests.post(sparse_url, json=payload, headers=self.headers)
 
-        dense_embeddings = result
-        # 测试，之后获取正式的方法后修改
-        sparse_embeddings = [
-            {
-                364: 0.17531773447990417,
-                418: 0.145879546621,
-                630: 0.1101302548795,
-                3172: 0.268978546412,
-                5357: 0.254789645874,
-                15483: 0.215479896454225454
-            } for _ in range(len(texts))
-        ]
+        if sparse_response.status_code != 200:
+            raise Exception(f"Request failed: {sparse_response.status_code}, {sparse_response.text}")
 
-
+        sparse_objs = sparse_response.json()
+        sparse_embeddings = []
+        for sparse_obj in sparse_objs:
+            sparse_embedding = {}
+            for i in sparse_obj:
+                new_key = int(i.get("index"))
+                sparse_embedding[new_key] = i.get("value")
+            sparse_embeddings.append(sparse_embedding)
 
         return dense_embeddings, sparse_embeddings
 
 
 if __name__ == '__main__':
-    tei = TeiEmbeddingClient("127.0.0.1", 8080)
-    dense_embedding, sparse_embedding = tei.embed_all(["你好我有一个帽衫", "我要在网上问问", "像个大耳朵矮人"])
+    tei = TeiEmbeddingClient("127.0.0.1", 8181)
+    dense_embeddings, sparse_embedding = tei.embed_all(["你好我有一个帽衫", "我要在网上问问", "像个大耳朵矮人"])

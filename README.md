@@ -18,3 +18,9 @@ cd baai_m3_simple_server
 
 python3 m3_server.py
 ~~~
+
+## TEI bge-m3 server
+
+~~~
+docker run -u root -itd -e ENABLE_BOOST=True -e POOLING=splade -e CLEAN_NPU_CACHE=True -e ASCEND_VISIBLE_DEVICES=7 --name=tei --net=host -v /data/Downloads/niuzm/embedding_model/:/home/HwHiAiUser/model swr.cn-south-1.myhuaweicloud.com/ascendhub/mis-tei:6.0.0-800I-A2-aarch64  bge-m3 0.0.0.0 8181
+~~~
