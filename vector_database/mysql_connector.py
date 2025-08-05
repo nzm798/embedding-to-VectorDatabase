@@ -55,6 +55,25 @@ class MySQLClient:
         except Exception as e:
             print(f"[ERROR] Query failed: {e}")
             return None
+    def get_files_by_knowledge(self, knowledge_base_id: int, conn, cursor) -> Optional[list]:
+        """
+        查询在对应知识库ID下的所有数据
+        """
+        if not conn or not cursor:
+            print(f"[ERROR] Invalid database connection or cursor.")
+            return None
+        try:
+            sql = f"SELECT * FROM `{self.table_name}` WHERE konwledge_base_id = %s ORDER BY id ASC"
+            cursor.execute(sql, (knowledge_base_id,))
+            results = cursor.fetchall()
+            if results:
+                print(f"[INFO] Get knowledge base ID: {knowledge_base_id} ,number of results: {len(results)}\n")
+                return results
+            else:
+                return None
+        except Exception as e:
+            print(f"[ERROR] Query failed: {e}")
+            return None
 
     def close(self):
         """
@@ -67,11 +86,13 @@ class MySQLClient:
 
 if __name__=="__main__":
     mysql_client = MySQLClient(
-        host="192.168.35.231",
+        host="192.168.100.9",
         port=3306,
         user="szzf",
         password="jRzZHvnjRm1kJ9fRj5SL",
         database="dimension_beijing_xicheng",
         table_name="knowledge_document_library"
     )
-    print(mysql_client.get_id_by_filename("合肥市延长集中供暖_37765.pdf"))
+    conn, cursor = mysql_client.get_conn()
+    # print(mysql_client.get_id_by_filename("合肥市延长集中供暖_37765.pdf"))
+    mysql_client.get_files_by_knowledge(123,conn,cursor)

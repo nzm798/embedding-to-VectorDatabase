@@ -24,6 +24,14 @@
     "minio_bucket": "a-bucket",
     "remote_data_path": "parquet"
   },
+  "HDFSBatchReader":  {
+    "hdfs_url": "http://192.168.100.9:9870",
+    "hdfs_user": "ecm-bf52",
+    "batch_size": 64,
+    "max_concurrent_reads": 20,
+    "cache_preload_size": 128,
+    "max_cache_size": 256
+  },
   "BatchReader": {
     "file_path": "./news_corpus20250321.jsonl",
     "start": 2361945,

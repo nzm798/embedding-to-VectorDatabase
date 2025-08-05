@@ -1,6 +1,7 @@
 import polars as pl
 import threading
 
+from load_data.base_batch_reader import BaseBatchReader
 from util.clean_data import clean_title
 
 #def clean_title(title):
@@ -11,7 +12,7 @@ from util.clean_data import clean_title
 #    if not clean_title:
 #        return "untitled"
 #    return clean_title
-class JsonlBatchReader:
+class JsonlBatchReader(BaseBatchReader):
     def __init__(self, file_path: str, start: int = 1, end: int = None, batch_size: int = 1000):
         """
         :param file_path: JSONL文件路径
