@@ -83,7 +83,7 @@ if __name__ == "__main__":
     reader = JsonlBatchReader(file_path="../news_corpus20250321.jsonl", start=2079262,batch_size=1000)
     import pymysql
     connection = pymysql.connect(
-            host="192.168.35.231",
+            host="192.168.100.9",
             port=3306,
             user="szzf",
             password="jRzZHvnjRm1kJ9fRj5SL",

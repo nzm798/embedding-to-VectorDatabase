@@ -4,7 +4,8 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 from hdfs import InsecureClient
 import time
-
+import sys
+sys.path.append("/workspace")
 from load_data.base_batch_reader import BaseBatchReader
 
 
@@ -106,8 +107,9 @@ class HdfsBatchReader(BaseBatchReader):
             return {
                 'id': file_info.get('id'),
                 'name': file_info.get('name'),
-                'file_path': file_path,
+                'file_path': file_path_pdf,
                 'content': content,
+                'word_count': len(content),
                 'file_name': file_info.get('name'),
             }
         except Exception as e:
@@ -186,6 +188,6 @@ if __name__ == '__main__':
         batch = hdfs_reader.next_batch()
         print(f"Batch {batch_idx}:")
         for k in batch:
-            print(f"Batch name: {k['name']},Batch id: {k['id']},Batch size: {len(batch)}\n")
+            print(f"Batch name: {k['name']},Batch id: {k['id']},Batch file path:{k['file_path']},Batch word count : {k['word_count']},Batch size: {len(batch)}\n\n")
         batch_idx += 1
         time.sleep(5)

@@ -35,3 +35,40 @@ conda activate embedding
 ~~~
 docker run -u root -itd -e ENABLE_BOOST=True -e POOLING=splade -e CLEAN_NPU_CACHE=True -e ASCEND_VISIBLE_DEVICES=2 --name=LanTai_spase_tei --net=host -v /data/Downloads/niuzm/embedding_model/:/home/HwHiAiUser/model swr.cn-south-1.myhuaweicloud.com/ascendhub/mis-tei:6.0.0-800I-A2-aarch64  bge-m3 0.0.0.0 8181
 ~~~
+
+
+## 启动打标模型
+
+~~~
+docker run -it -d --net=host --shm-size=50g \
+    --privileged \
+    --name qwen-14b \
+    --device=/dev/davinci_manager \
+    --device=/dev/hisi_hdc \
+    --device=/dev/devmm_svm \
+    -v /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro \
+    -v /usr/local/sbin:/usr/local/sbin:ro \
+    -v /data/Downloads/niuzm/llm_models/Qwen-14B:/model:ro \
+    mindie:2.0.T17.B010-800I-A2-py3.11-openeuler24.03-lts-aarch64 bash
+    
+# 该Mindie版本需要升级transformers==4.515.0
+~~~
+
+测试：
+
+~~~
+curl -X POST 192.168.100.7:1025/v1/chat/completions \
+-d '{
+"messages": [
+{"role": "system", "content": "you are a helpful assistant."},
+{"role": "user", "content": "How many r are in the word \"strawberry\""}
+],
+"max_tokens": 256,
+"stream": false,
+"do_sample": true,
+"temperature": 0.6,
+"top_p": 0.95,
+"top_k": 20,
+"model": "qwen3-14b"
+}'
+~~~

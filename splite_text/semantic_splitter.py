@@ -5,10 +5,6 @@ import time
 
 from langchain_core.embeddings import Embeddings
 from typing import Optional, List, Iterator
-
-import sys
-sys.path.append('/workspace')
-
 from splite_text import BaseSplitter
 from langchain_experimental.text_splitter import SemanticChunker
 
@@ -61,7 +57,7 @@ class TeiEmbeddings(Embeddings):
                  batch_size: int = 32,
                  timeout: int = 30,
                  max_retries: int = 3,
-                 use_async: bool = False):
+                 use_async: bool = True):
         """
         初始化TEI嵌入客户端
 
@@ -265,7 +261,7 @@ if __name__ == "__main__":
     embeddings = TeiEmbeddings("192.168.100.7", "8082")
     # print(embeddings.embed_query("你好我有一个毛衫"))
     # print(embeddings.embed_documents(["你好我有一个帽衫","我要在网上问问"]))
-    splitter = SemanticSplitter(embeddings)
+    splitter = SemanticSplitter(embeddings,min_chunk_size=512,breakpoint_threshold_amount=95)
     with open('/workspace/splite_text/test_doc.txt', 'r', encoding="utf-8") as f:
         text = f.read()
     split_text = splitter.split(text)

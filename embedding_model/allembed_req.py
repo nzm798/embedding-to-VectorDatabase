@@ -1,7 +1,7 @@
 import requests
 from typing import List, Tuple, Optional
 
-from embedding_model import BaseEmbeddingClient
+from embedding_model.base_req import BaseEmbeddingClient
 
 
 class AllEmbeddingClient(BaseEmbeddingClient):

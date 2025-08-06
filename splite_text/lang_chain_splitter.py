@@ -28,3 +28,11 @@ class TextSplitter(BaseSplitter):
         :return: 分块后的文本列表
         """
         return self.text_splitter.split_text(text)
+
+if __name__ == "__main__":
+    splitter = TextSplitter()
+    with open('/workspace/splite_text/test_doc.txt', 'r', encoding="utf-8") as f:
+        text = f.read()
+    split_text = splitter.split(text)
+    for text in split_text:
+        print(f"切分长度为{len(text)},切分：{text}\n\n")
